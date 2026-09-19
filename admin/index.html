@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0b1220">
+  <title>TTD Autofill • Admin</title>
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+
+  <main class="shell">
+    <header class="brandbar">
+      <div class="brand">
+        <div class="brand-mark">T</div>
+        <div>
+          <h1>TTD Autofill</h1>
+          <p>Coupon administration</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="themeToggle" class="theme-toggle" type="button" aria-label="Switch to light mode" title="Switch theme">
+          <span class="theme-icon" aria-hidden="true">☀</span>
+          <span class="theme-label">Light</span>
+        </button>
+        <div class="live-pill" id="livePill"><span></span><b>Live</b><small>Auto-sync</small></div>
+      </div>
+    </header>
+
+    <section id="login" class="login-card">
+      <div class="login-icon">🔐</div>
+      <div>
+        <p class="eyebrow">SECURE ADMIN</p>
+        <h2>Welcome back</h2>
+        <p class="muted">Enter your private admin token to manage coupons.</p>
+      </div>
+      <div class="login-form">
+        <label for="token">Admin token</label>
+        <div class="input-action">
+          <input id="token" type="password" autocomplete="current-password" placeholder="Enter admin token">
+          <button id="loginBtn" class="primary">Sign in</button>
+        </div>
+        <p id="loginMsg" class="form-msg"></p>
+      </div>
+    </section>
+
+    <section id="panel" class="hidden">
+      <div class="page-head">
+        <div>
+          <p class="eyebrow">CONTROL CENTER</p>
+          <h2>Coupon dashboard</h2>
+          <p class="muted">Create, monitor and instantly revoke activation access.</p>
+        </div>
+        <button id="logout" class="ghost">Log out</button>
+      </div>
+
+      <div class="stats">
+        <article class="stat-card">
+          <span class="stat-label">Total coupons</span>
+          <strong id="totalStat">0</strong>
+          <small>All generated codes</small>
+        </article>
+        <article class="stat-card accent">
+          <span class="stat-label">Active</span>
+          <strong id="activeStat">0</strong>
+          <small>Available for activation</small>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Disabled</span>
+          <strong id="disabledStat">0</strong>
+          <small>Access manually blocked</small>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Expired</span>
+          <strong id="expiredStat">0</strong>
+          <small>Past expiry time</small>
+        </article>
+      </div>
+
+      <section class="card create-card">
+        <div class="section-heading">
+          <div class="section-icon">＋</div>
+          <div>
+            <h3>Create coupons</h3>
+            <p>Generate unique activation codes without changing the existing redemption logic.</p>
+          </div>
+        </div>
+
+        <div class="create-grid">
+          <label>
+            <span>Number of coupons</span>
+            <input id="count" type="number" min="1" max="100" value="1">
+          </label>
+          <label>
+            <span>Uses per coupon</span>
+            <input id="uses" type="number" min="1" max="100000" value="1">
+          </label>
+          <label class="expiry-field">
+            <span>Expiry date & time <em>optional</em></span>
+            <input id="expiry" type="datetime-local">
+          </label>
+        </div>
+
+        <div class="quick-expiry">
+          <span>Quick expiry:</span>
+          <button data-expiry="none" class="chip">No expiry</button>
+          <button data-expiry="1" class="chip">1 day</button>
+          <button data-expiry="7" class="chip">7 days</button>
+          <button data-expiry="30" class="chip">30 days</button>
+        </div>
+
+        <div class="create-actions">
+          <p id="msg" class="form-msg"></p>
+          <button id="generate" class="primary create-btn">Generate coupons <span>→</span></button>
+        </div>
+        <div id="newCodes" class="new-codes"></div>
+      </section>
+
+      <section class="card manage-card">
+        <div class="manage-head">
+          <div class="section-heading compact">
+            <div class="section-icon list-icon">☷</div>
+            <div>
+              <h3>Coupons</h3>
+              <p>Changes sync automatically. Remaining time updates every second.</p>
+            </div>
+          </div>
+          <button id="refresh" class="ghost refresh-btn"><span>↻</span> Refresh</button>
+        </div>
+
+        <div class="toolbar">
+          <div class="search-box">
+            <span>⌕</span>
+            <input id="search" placeholder="Search coupon code..." autocomplete="off">
+          </div>
+          <select id="statusFilter" aria-label="Filter coupons">
+            <option value="all">All statuses</option>
+            <option value="active">Active</option>
+            <option value="disabled">Disabled</option>
+            <option value="expired">Expired</option>
+            <option value="used">Used</option>
+          </select>
+        </div>
+
+        <div id="table" class="coupon-list"></div>
+      </section>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <div id="confirmModal" class="modal hidden" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-icon">!</div>
+      <h3 id="modalTitle">Delete coupon?</h3>
+      <p id="modalText"></p>
+      <div class="modal-actions">
+        <button id="cancelModal" class="ghost">Cancel</button>
+        <button id="confirmModalBtn" class="danger">Delete permanently</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/admin/admin.js"></script>
+</body>
+</html>
