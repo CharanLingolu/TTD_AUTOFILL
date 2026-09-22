@@ -142,53 +142,85 @@ app.post("/api/coupon/redeem", async (req, res) => {
     if (!validInstallationId(installationId) || typeof code !== "string") {
       return res.status(400).json({ ok: false, error: "Invalid request" });
     }
-    const normalized = code.trim().toUpperCase();
-    if (!normalized || normalized.length > 64) return res.status(400).json({ ok: false, error: "Invalid coupon code" });
 
+    const normalized = code.trim().toUpperCase();
+    if (!normalized || normalized.length > 64) {
+      return res.status(400).json({ ok: false, error: "Invalid coupon code" });
+    }
+
+    // If this installation already has an active license, return it.
+    // This also keeps repeated taps on Apply idempotent.
     let existing = await License.findOne({ installationId });
     if (existing) {
       existing = await syncLicenseFromCoupon(existing);
       if (existing?.status === "active") {
-        return res.json({ ok: true, license: publicLicense(existing), message: "License already active." });
+        return res.json({
+          ok: true,
+          license: publicLicense(existing),
+          message: "License already active."
+        });
       }
     }
 
-    const session = await License.startSession();
-    let activated;
+    // Do not use a MongoDB session/transaction here. Vercel serverless
+    // deployments can be backed by MongoDB configurations where transactions
+    // are unavailable, which previously caused HTTP 500 on coupon redemption.
+    // The coupon usage increment itself is atomic via findOneAndUpdate.
+    const coupon = await Coupon.findOneAndUpdate(
+      {
+        code: normalized,
+        active: true,
+        $expr: { $lt: ["$usedCount", "$maxUses"] },
+        $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }]
+      },
+      { $inc: { usedCount: 1 } },
+      { new: true }
+    );
+
+    if (!coupon) {
+      return res.status(400).json({ ok: false, error: "Invalid or expired coupon" });
+    }
+
     try {
-      await session.withTransaction(async () => {
-        const coupon = await Coupon.findOneAndUpdate(
-          {
-            code: normalized,
-            active: true,
-            $expr: { $lt: ["$usedCount", "$maxUses"] },
-            $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }]
-          },
-          { $inc: { usedCount: 1 } },
-          { new: true, session }
-        );
+      const activated = await License.findOneAndUpdate(
+        { installationId },
+        {
+          $set: {
+            status: "active",
+            type: "coupon",
+            couponCode: normalized,
+            activatedAt: new Date(),
+            expiresAt: coupon.expiresAt || null
+          }
+        },
+        { upsert: true, new: true }
+      );
 
-        if (!coupon) throw new Error("INVALID_COUPON");
-
-        activated = await License.findOneAndUpdate(
-          { installationId },
-          { $set: { status: "active", type: "coupon", couponCode: normalized, activatedAt: new Date(), expiresAt: coupon.expiresAt || null } },
-          { upsert: true, new: true, session }
-        );
+      return res.json({
+        ok: true,
+        license: publicLicense(activated),
+        message: "Coupon accepted. Pro is active."
       });
-    } catch (error) {
-      if (error?.message === "INVALID_COUPON") {
-        return res.status(400).json({ ok: false, error: "Invalid or expired coupon" });
+    } catch (licenseError) {
+      // If license creation fails, put the coupon use back so a legitimate
+      // customer does not lose a coupon because of a temporary DB error.
+      try {
+        await Coupon.updateOne(
+          { _id: coupon._id, usedCount: { $gt: 0 } },
+          { $inc: { usedCount: -1 } }
+        );
+      } catch (rollbackError) {
+        console.error("[Coupon rollback]", rollbackError);
       }
-      throw error;
-    } finally {
-      await session.endSession();
+      throw licenseError;
     }
-
-    return res.json({ ok: true, license: publicLicense(activated), message: "Coupon accepted. Pro is active." });
   } catch (error) {
     console.error("[Coupon redeem]", error);
-    return res.status(500).json({ ok: false, error: "Could not redeem coupon" });
+    return res.status(500).json({
+      ok: false,
+      error: "Could not redeem coupon",
+      detail: process.env.NODE_ENV === "production" ? undefined : String(error?.message || error)
+    });
   }
 });
 

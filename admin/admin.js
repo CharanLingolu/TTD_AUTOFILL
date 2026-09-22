@@ -16,37 +16,6 @@ let loadTimer = null;
 let toastTimer = null;
 let pendingConfirm = null;
 
-// ============================================================
-// THEME
-// ============================================================
-
-const themeToggle = $("themeToggle");
-const savedTheme = localStorage.getItem("ttd_admin_theme");
-const systemPrefersLight = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
-
-function applyTheme(theme) {
-  const resolved = theme === "light" ? "light" : "dark";
-  document.documentElement.dataset.theme = resolved;
-
-  if (themeToggle) {
-    const isLight = resolved === "light";
-    themeToggle.setAttribute("aria-label", isLight ? "Switch to dark mode" : "Switch to light mode");
-    themeToggle.title = isLight ? "Switch to dark mode" : "Switch to light mode";
-    themeToggle.querySelector(".theme-icon").textContent = isLight ? "☾" : "☀";
-    themeToggle.querySelector(".theme-label").textContent = isLight ? "Dark" : "Light";
-  }
-}
-
-applyTheme(savedTheme || (systemPrefersLight ? "light" : "dark"));
-
-if (themeToggle) {
-  themeToggle.onclick = () => {
-    const next = document.documentElement.dataset.theme === "light" ? "dark" : "light";
-    localStorage.setItem("ttd_admin_theme", next);
-    applyTheme(next);
-  };
-}
-
 const headers = () => ({
   "Content-Type": "application/json",
   "X-Admin-Token": token
