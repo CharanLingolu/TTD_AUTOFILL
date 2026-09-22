@@ -23,9 +23,29 @@ app.use(cors({
   origin(origin, callback) {
     const localAdmin = origin === "http://localhost:8787" || origin === "http://127.0.0.1:8787";
     const localVite = origin === "http://localhost:5173" || origin === "http://127.0.0.1:5173";
-    const developmentExtension = process.env.NODE_ENV !== "production" && origin?.startsWith("chrome-extension://");
-    if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin) || localAdmin || localVite || developmentExtension) callback(null, true);
-    else callback(new Error("Origin not allowed"));
+    // Browser extensions use a moz-extension:// origin on Firefox and
+    // chrome-extension:// on Chromium. These origins are dynamic (especially
+    // on Firefox), so they cannot be listed as a single fixed URL in
+    // ALLOWED_ORIGINS. CORS is not used as authentication; coupon/license
+    // validation and rate limiting remain the security controls.
+    const browserExtension =
+      origin?.startsWith("chrome-extension://") ||
+      origin?.startsWith("moz-extension://");
+
+    if (
+      !origin ||
+      allowedOrigins.length === 0 ||
+      allowedOrigins.includes(origin) ||
+      localAdmin ||
+      localVite ||
+      browserExtension
+    ) {
+      callback(null, true);
+    } else {
+      // Reject CORS without throwing. Throwing here becomes an HTTP 500 in
+      // Express/Vercel, which is misleading for a browser-origin mismatch.
+      callback(null, false);
+    }
   }
 }));
 
