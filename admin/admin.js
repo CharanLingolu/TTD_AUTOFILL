@@ -28,6 +28,10 @@ const headers = () => ({
   "X-Admin-Token": token,
 });
 
+/* =========================================================
+   API REQUEST
+========================================================= */
+
 async function request(url, options = {}) {
   const response = await fetch(url, {
     cache: "no-store",
@@ -46,6 +50,10 @@ async function request(url, options = {}) {
 
   return data;
 }
+
+/* =========================================================
+   HTML ESCAPE
+========================================================= */
 
 function escapeHtml(value) {
   return String(value ?? "").replace(
@@ -108,19 +116,9 @@ function couponMailBody(coupon) {
     : "No expiry";
 
   /*
-   * IMPORTANT:
-   *
-   * We deliberately create the newline using
-   * String.fromCharCode(13, 10).
-   *
-   * This produces an actual CRLF:
-   *
-   * \r\n
-   *
-   * and prevents Gmail from displaying literal
-   * "\\n" characters.
+   * Use actual CRLF characters.
+   * This prevents Gmail from displaying literal \n.
    */
-
   const newLine = String.fromCharCode(13, 10);
 
   const lines = [
@@ -255,7 +253,7 @@ function setLive(online) {
 }
 
 /* =========================================================
-   RENDER COUPONS
+   RENDER
 ========================================================= */
 
 function render() {
@@ -500,7 +498,7 @@ function render() {
 }
 
 /* =========================================================
-   LOAD COUPONS
+   LOAD
 ========================================================= */
 
 async function load(silent = false) {
@@ -567,7 +565,7 @@ function startRealtime() {
 }
 
 /* =========================================================
-   LOGIN / PANEL
+   LOGIN
 ========================================================= */
 
 function showLogin() {
@@ -743,7 +741,7 @@ function closeConfirm() {
 }
 
 /* =========================================================
-   LOGIN
+   LOGIN BUTTON
 ========================================================= */
 
 $("loginBtn").onclick = async () => {
@@ -989,19 +987,15 @@ $("cancelMail").onclick = closeMail;
 mailModal.querySelector("[data-close-mail]").onclick = closeMail;
 
 /* =========================================================
-   OPEN GMAIL
+   MAIL / GMAIL HANDLER
 ========================================================= */
 
 $("sendMail").onclick = () => {
   const email = mailTo.value.trim();
 
   /*
-   * Correct email validation.
-   *
-   * IMPORTANT:
-   * Use \s, not \\s.
+   * Validate recipient email.
    */
-
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     mailMsg.textContent = "Enter a valid email address.";
 
@@ -1023,40 +1017,110 @@ $("sendMail").onclick = () => {
   const subject = `TTD Autofill Pro Coupon - ${coupon.code}`;
 
   /*
-   * Build the email body using REAL
-   * CRLF line breaks.
+   * Create properly formatted email body.
    */
-
   const body = couponMailBody(coupon);
 
+  const encodedTo = encodeURIComponent(email);
+
+  const encodedSubject = encodeURIComponent(subject);
+
+  const encodedBody = encodeURIComponent(body);
+
   /*
-   * Gmail web composer.
-   *
-   * This works on laptop/desktop even
-   * when Windows has no default mail
-   * application configured.
+   * Detect Android.
    */
+  const isAndroid = /Android/i.test(navigator.userAgent);
+
+  /*
+   * Detect iPhone / iPad.
+   */
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  /* =====================================================
+       ANDROID
+    ===================================================== */
+
+  if (isAndroid) {
+    /*
+     * Gmail Android custom scheme.
+     *
+     * This asks Android to open the
+     * installed Gmail application.
+     */
+    const gmailAppUrl =
+      `googlegmail:///co` +
+      `?to=${encodedTo}` +
+      `&subject=${encodedSubject}` +
+      `&body=${encodedBody}`;
+
+    const link = document.createElement("a");
+
+    link.href = gmailAppUrl;
+
+    link.style.display = "none";
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    link.remove();
+
+    /*
+     * Fallback to Android's mail handler
+     * if Gmail cannot be opened.
+     *
+     * The delay gives Gmail time to launch.
+     */
+    setTimeout(() => {
+      const mailtoUrl =
+        `mailto:${encodedTo}` +
+        `?subject=${encodedSubject}` +
+        `&body=${encodedBody}`;
+
+      window.location.href = mailtoUrl;
+    }, 1500);
+
+    closeMail();
+
+    return;
+  }
+
+  /* =====================================================
+       IOS
+    ===================================================== */
+
+  if (isIOS) {
+    const mailtoUrl =
+      `mailto:${encodedTo}` +
+      `?subject=${encodedSubject}` +
+      `&body=${encodedBody}`;
+
+    window.location.href = mailtoUrl;
+
+    closeMail();
+
+    return;
+  }
+
+  /* =====================================================
+       LAPTOP / DESKTOP
+    ===================================================== */
 
   const gmailComposeUrl =
     "https://mail.google.com/mail/?view=cm&fs=1" +
     "&to=" +
-    encodeURIComponent(email) +
+    encodedTo +
     "&su=" +
-    encodeURIComponent(subject) +
+    encodedSubject +
     "&body=" +
-    encodeURIComponent(body);
-
-  /*
-   * Open Gmail in a new tab.
-   */
+    encodedBody;
 
   const popup = window.open(gmailComposeUrl, "_blank", "noopener,noreferrer");
 
   /*
-   * If popup is blocked, open it
-   * in the current tab.
+   * Popup fallback.
    */
-
   if (!popup) {
     window.location.href = gmailComposeUrl;
   }
@@ -1091,7 +1155,7 @@ setInterval(() => {
 }, 1000);
 
 /* =========================================================
-   START
+   START APPLICATION
 ========================================================= */
 
 if (token) {
