@@ -23,14 +23,14 @@ let pendingConfirm = null;
 
 const headers = () => ({
   "Content-Type": "application/json",
-  "X-Admin-Token": token
+  "X-Admin-Token": token,
 });
 
 async function request(url, options = {}) {
   const response = await fetch(url, {
     cache: "no-store",
     ...options,
-    headers: { ...headers(), ...(options.headers || {}) }
+    headers: { ...headers(), ...(options.headers || {}) },
   });
 
   const data = await response.json().catch(() => ({}));
@@ -43,13 +43,17 @@ async function request(url, options = {}) {
 }
 
 function escapeHtml(value) {
-  return String(value ?? "").replace(/[&<>'"]/g, (char) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    "'": "&#39;",
-    '"': "&quot;"
-  })[char]);
+  return String(value ?? "").replace(
+    /[&<>'"]/g,
+    (char) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "'": "&#39;",
+        '"': "&quot;",
+      }[char])
+  );
 }
 
 function formatExpiry(value) {
@@ -57,16 +61,18 @@ function formatExpiry(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Invalid date";
 
-  return new Intl.DateTimeFormat("en-IN", {
-    timeZone: "Asia/Kolkata",
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true
-  }).format(date) + " IST";
+  return (
+    new Intl.DateTimeFormat("en-IN", {
+      timeZone: "Asia/Kolkata",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    }).format(date) + " IST"
+  );
 }
 
 function formatDate(value) {
@@ -75,7 +81,9 @@ function formatDate(value) {
 }
 
 function couponMailBody(coupon) {
-  const expiry = coupon.expiresAt ? formatExpiry(coupon.expiresAt) : "No expiry";
+  const expiry = coupon.expiresAt
+    ? formatExpiry(coupon.expiresAt)
+    : "No expiry";
   return [
     "Hello,",
     "",
@@ -95,7 +103,7 @@ function couponMailBody(coupon) {
     "",
     "Regards,",
     "TTD Autofill Pro",
-    "ttdautofillpro@gmail.com"
+    "ttdautofillpro@gmail.com",
   ].join("\\n");
 }
 
@@ -140,7 +148,9 @@ function showToast(message, type = "success") {
 function setLive(online) {
   livePill.classList.toggle("offline", !online);
   livePill.querySelector("b").textContent = online ? "Live" : "Offline";
-  livePill.querySelector("small").textContent = online ? "Auto-sync" : "Retrying";
+  livePill.querySelector("small").textContent = online
+    ? "Auto-sync"
+    : "Retrying";
 }
 
 function render() {
@@ -156,9 +166,15 @@ function render() {
   });
 
   $("totalStat").textContent = allCoupons.length;
-  $("activeStat").textContent = allCoupons.filter(c => statusOf(c).cls === "active").length;
-  $("disabledStat").textContent = allCoupons.filter(c => statusOf(c).cls === "disabled").length;
-  $("expiredStat").textContent = allCoupons.filter(c => statusOf(c).cls === "expired").length;
+  $("activeStat").textContent = allCoupons.filter(
+    (c) => statusOf(c).cls === "active"
+  ).length;
+  $("disabledStat").textContent = allCoupons.filter(
+    (c) => statusOf(c).cls === "disabled"
+  ).length;
+  $("expiredStat").textContent = allCoupons.filter(
+    (c) => statusOf(c).cls === "expired"
+  ).length;
 
   if (!filtered.length) {
     table.innerHTML = `
@@ -170,17 +186,20 @@ function render() {
     return;
   }
 
-  table.innerHTML = filtered.map((coupon) => {
-    const status = statusOf(coupon);
-    const usage = `${coupon.usedCount} / ${coupon.maxUses}`;
+  table.innerHTML = filtered
+    .map((coupon) => {
+      const status = statusOf(coupon);
+      const usage = `${coupon.usedCount} / ${coupon.maxUses}`;
 
-    return `
+      return `
       <article class="coupon-row">
         <div class="coupon-main">
           <div class="coupon-code">
             <span class="code-label">COUPON</span>
             <code>${escapeHtml(coupon.code)}</code>
-            <button class="icon-btn" title="Copy coupon" data-copy="${escapeHtml(coupon.code)}">⧉</button>
+            <button class="icon-btn" title="Copy coupon" data-copy="${escapeHtml(
+              coupon.code
+            )}">⧉</button>
           </div>
           <div class="coupon-meta">
             <span><b>Usage</b> ${usage}</span>
@@ -200,15 +219,28 @@ function render() {
         </div>
 
         <div class="row-actions">
-          ${coupon.active
-            ? `<button class="action-btn disable" data-toggle="${escapeHtml(coupon.code)}" data-active="false">Disable</button>`
-            : `<button class="action-btn enable" data-toggle="${escapeHtml(coupon.code)}" data-active="true">Enable</button>`}
-          <button class="action-btn details" data-details="${escapeHtml(coupon.code)}">ⓘ Details</button>
-          <button class="action-btn mail" data-mail="${escapeHtml(coupon.code)}">✉ Mail</button>
-          <button class="action-btn delete" data-delete="${escapeHtml(coupon.code)}">Delete</button>
+          ${
+            coupon.active
+              ? `<button class="action-btn disable" data-toggle="${escapeHtml(
+                  coupon.code
+                )}" data-active="false">Disable</button>`
+              : `<button class="action-btn enable" data-toggle="${escapeHtml(
+                  coupon.code
+                )}" data-active="true">Enable</button>`
+          }
+          <button class="action-btn details" data-details="${escapeHtml(
+            coupon.code
+          )}">ⓘ Details</button>
+          <button class="action-btn mail" data-mail="${escapeHtml(
+            coupon.code
+          )}">✉ Mail</button>
+          <button class="action-btn delete" data-delete="${escapeHtml(
+            coupon.code
+          )}">Delete</button>
         </div>
       </article>`;
-  }).join("");
+    })
+    .join("");
 
   table.querySelectorAll("[data-copy]").forEach((button) => {
     button.onclick = async () => {
@@ -216,7 +248,7 @@ function render() {
         await navigator.clipboard.writeText(button.dataset.copy);
         button.textContent = "✓";
         showToast("Coupon copied");
-        setTimeout(() => button.textContent = "⧉", 900);
+        setTimeout(() => (button.textContent = "⧉"), 900);
       } catch {
         showToast("Could not copy coupon", "error");
       }
@@ -232,11 +264,13 @@ function render() {
       try {
         await request(`/api/admin/coupons/${encodeURIComponent(code)}`, {
           method: "PATCH",
-          body: JSON.stringify({ active })
+          body: JSON.stringify({ active }),
         });
 
         await load();
-        showToast(active ? `${code} enabled` : `${code} disabled — access revoked`);
+        showToast(
+          active ? `${code} enabled` : `${code} disabled — access revoked`
+        );
       } catch (error) {
         button.disabled = false;
         showToast(error.message, "error");
@@ -258,7 +292,8 @@ function render() {
 }
 
 async function load(silent = false) {
-  if (!silent) table.innerHTML = `<div class="loading-state"><div class="spinner"></div><span>Loading coupons…</span></div>`;
+  if (!silent)
+    table.innerHTML = `<div class="loading-state"><div class="spinner"></div><span>Loading coupons…</span></div>`;
 
   try {
     const data = await request("/api/admin/coupons");
@@ -276,7 +311,9 @@ async function load(silent = false) {
     }
 
     if (!silent) {
-      table.innerHTML = `<div class="empty-state error-state"><div class="empty-icon">!</div><h3>Could not load coupons</h3><p>${escapeHtml(error.message)}</p></div>`;
+      table.innerHTML = `<div class="empty-state error-state"><div class="empty-icon">!</div><h3>Could not load coupons</h3><p>${escapeHtml(
+        error.message
+      )}</p></div>`;
     }
   }
 }
@@ -305,7 +342,9 @@ function showPanel() {
 }
 
 function findCoupon(code) {
-  return allCoupons.find((coupon) => String(coupon.code).toUpperCase() === String(code).toUpperCase());
+  return allCoupons.find(
+    (coupon) => String(coupon.code).toUpperCase() === String(code).toUpperCase()
+  );
 }
 
 function openDetails(code) {
@@ -314,12 +353,24 @@ function openDetails(code) {
 
   const status = statusOf(coupon);
   detailsBody.innerHTML = `
-    <div class="detail-line"><span>Coupon</span><b>${escapeHtml(coupon.code)}</b></div>
-    <div class="detail-line"><span>Status</span><b>${escapeHtml(status.label)}</b></div>
-    <div class="detail-line"><span>Created</span><b>${escapeHtml(formatDate(coupon.createdAt))}</b></div>
-    <div class="detail-line"><span>Last used</span><b>${escapeHtml(formatDate(coupon.lastUsedAt))}</b></div>
-    <div class="detail-line"><span>Usage</span><b>${escapeHtml(`${coupon.usedCount} / ${coupon.maxUses}`)}</b></div>
-    <div class="detail-line"><span>Expiry</span><b>${escapeHtml(formatDate(coupon.expiresAt))}</b></div>
+    <div class="detail-line"><span>Coupon</span><b>${escapeHtml(
+      coupon.code
+    )}</b></div>
+    <div class="detail-line"><span>Status</span><b>${escapeHtml(
+      status.label
+    )}</b></div>
+    <div class="detail-line"><span>Created</span><b>${escapeHtml(
+      formatDate(coupon.createdAt)
+    )}</b></div>
+    <div class="detail-line"><span>Last used</span><b>${escapeHtml(
+      formatDate(coupon.lastUsedAt)
+    )}</b></div>
+    <div class="detail-line"><span>Usage</span><b>${escapeHtml(
+      `${coupon.usedCount} / ${coupon.maxUses}`
+    )}</b></div>
+    <div class="detail-line"><span>Expiry</span><b>${escapeHtml(
+      formatDate(coupon.expiresAt)
+    )}</b></div>
   `;
 
   detailsModal.classList.remove("hidden");
@@ -413,24 +464,32 @@ $("generate").onclick = async () => {
       body: JSON.stringify({
         count: Number($("count").value),
         maxUses: Number($("uses").value),
-        expiresAt: expiry ? new Date(expiry).toISOString() : ""
-      })
+        expiresAt: expiry ? new Date(expiry).toISOString() : "",
+      }),
     });
 
-    msg.textContent = `Created ${data.coupons.length} coupon${data.coupons.length === 1 ? "" : "s"}.`;
+    msg.textContent = `Created ${data.coupons.length} coupon${
+      data.coupons.length === 1 ? "" : "s"
+    }.`;
 
-    newCodes.innerHTML = data.coupons.map((coupon) => `
+    newCodes.innerHTML = data.coupons
+      .map(
+        (coupon) => `
       <div class="new-code">
         <div><span>NEW</span><code>${escapeHtml(coupon.code)}</code></div>
-        <button class="icon-btn" data-copy-new="${escapeHtml(coupon.code)}">⧉ Copy</button>
+        <button class="icon-btn" data-copy-new="${escapeHtml(
+          coupon.code
+        )}">⧉ Copy</button>
       </div>
-    `).join("");
+    `
+      )
+      .join("");
 
     newCodes.querySelectorAll("[data-copy-new]").forEach((button) => {
       button.onclick = async () => {
         await navigator.clipboard.writeText(button.dataset.copyNew);
         button.textContent = "✓ Copied";
-        setTimeout(() => button.textContent = "⧉ Copy", 1000);
+        setTimeout(() => (button.textContent = "⧉ Copy"), 1000);
       };
     });
 
@@ -454,7 +513,9 @@ document.querySelectorAll("[data-expiry]").forEach((button) => {
 
     const date = new Date(Date.now() + Number(days) * 86400000);
     const pad = (n) => String(n).padStart(2, "0");
-    const local = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    const local = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
+      date.getDate()
+    )}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
     $("expiry").value = local;
   };
 });
@@ -475,13 +536,22 @@ $("confirmModalBtn").onclick = async () => {
   button.textContent = "Deleting…";
 
   try {
-    const data = await request(`/api/admin/coupons/${encodeURIComponent(code)}`, {
-      method: "DELETE"
-    });
+    const data = await request(
+      `/api/admin/coupons/${encodeURIComponent(code)}`,
+      {
+        method: "DELETE",
+      }
+    );
 
     closeConfirm();
     await load(true);
-    showToast(`${code} deleted${data.deleted?.revokedLicenses ? ` • ${data.deleted.revokedLicenses} license(s) revoked` : ""}`);
+    showToast(
+      `${code} deleted${
+        data.deleted?.revokedLicenses
+          ? ` • ${data.deleted.revokedLicenses} license(s) revoked`
+          : ""
+      }`
+    );
   } catch (error) {
     button.disabled = false;
     button.textContent = "Delete permanently";
@@ -497,7 +567,7 @@ mailModal.querySelector("[data-close-mail]").onclick = closeMail;
 
 $("sendMail").onclick = () => {
   const email = mailTo.value.trim();
-  if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     mailMsg.textContent = "Enter a valid email address.";
     mailMsg.className = "form-msg error-text";
     return;
@@ -515,8 +585,9 @@ $("sendMail").onclick = () => {
 
   // mailto cannot force the sender account. The user's mail client/account
   // must be configured to send from ttdautofillpro@gmail.com.
-  window.location.href =
-    `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.location.href = `mailto:${encodeURIComponent(
+    email
+  )}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
   closeMail();
 };
