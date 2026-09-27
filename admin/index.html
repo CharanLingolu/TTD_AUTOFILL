@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta name="theme-color" content="#0b1220" />
     <title>TTD Autofill Pro • Admin</title>
+    <link rel="icon" type="image/png" href="/admin/favicon.png" />
     <link rel="stylesheet" href="/admin/admin.css" />
   </head>
   <body>
@@ -188,11 +189,14 @@
       </div>
     </div>
 
-
-
     <div id="detailsModal" class="modal hidden" aria-hidden="true">
       <div class="modal-backdrop" data-close-details></div>
-      <div class="modal-card details-card" role="dialog" aria-modal="true" aria-labelledby="detailsTitle">
+      <div
+        class="modal-card details-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="detailsTitle"
+      >
         <div class="modal-icon">ⓘ</div>
         <h3 id="detailsTitle">Coupon details</h3>
         <div id="detailsBody" class="details-body"></div>
@@ -204,12 +208,25 @@
 
     <div id="mailModal" class="modal hidden" aria-hidden="true">
       <div class="modal-backdrop" data-close-mail></div>
-      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="mailTitle">
+      <div
+        class="modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="mailTitle"
+      >
         <div class="modal-icon">✉</div>
         <h3 id="mailTitle">Email coupon</h3>
-        <p>Enter the recipient email address. Your default mail app will open with the message already filled.</p>
+        <p>
+          Enter the recipient email address. Your default mail app will open
+          with the message already filled.
+        </p>
         <label class="mail-label" for="mailTo">Email address</label>
-        <input id="mailTo" type="email" autocomplete="email" placeholder="customer@example.com" />
+        <input
+          id="mailTo"
+          type="email"
+          autocomplete="email"
+          placeholder="customer@example.com"
+        />
         <p id="mailMsg" class="form-msg"></p>
         <div class="modal-actions">
           <button id="cancelMail" class="ghost">Cancel</button>

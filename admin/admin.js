@@ -9,8 +9,10 @@ const table = $("table");
 const newCodes = $("newCodes");
 const toast = $("toast");
 const livePill = $("livePill");
+
 const detailsModal = $("detailsModal");
 const detailsBody = $("detailsBody");
+
 const mailModal = $("mailModal");
 const mailTo = $("mailTo");
 const mailMsg = $("mailMsg");
@@ -30,7 +32,10 @@ async function request(url, options = {}) {
   const response = await fetch(url, {
     cache: "no-store",
     ...options,
-    headers: { ...headers(), ...(options.headers || {}) },
+    headers: {
+      ...headers(),
+      ...(options.headers || {}),
+    },
   });
 
   const data = await response.json().catch(() => ({}));
@@ -56,8 +61,14 @@ function escapeHtml(value) {
   );
 }
 
+/* =========================================================
+   DATE / TIME
+========================================================= */
+
 function formatExpiry(value) {
-  if (!value) return "No expiry";
+  if (!value) {
+    return "No expiry";
+  }
 
   const date = new Date(value);
 
@@ -80,24 +91,39 @@ function formatExpiry(value) {
 }
 
 function formatDate(value) {
-  if (!value) return "Never";
+  if (!value) {
+    return "Never";
+  }
+
   return formatExpiry(value);
 }
 
-/*
- * Email message.
- *
- * IMPORTANT:
- * Use actual newline characters with "\n".
- * Do NOT use "\\n", otherwise Gmail will display the
- * characters "\n" instead of creating new lines.
- */
+/* =========================================================
+   COUPON EMAIL BODY
+========================================================= */
+
 function couponMailBody(coupon) {
   const expiry = coupon.expiresAt
     ? formatExpiry(coupon.expiresAt)
     : "No expiry";
 
-  return [
+  /*
+   * IMPORTANT:
+   *
+   * We deliberately create the newline using
+   * String.fromCharCode(13, 10).
+   *
+   * This produces an actual CRLF:
+   *
+   * \r\n
+   *
+   * and prevents Gmail from displaying literal
+   * "\\n" characters.
+   */
+
+  const newLine = String.fromCharCode(13, 10);
+
+  const lines = [
     "Hello,",
     "",
     "Thank you for using or contacting TTD Autofill Pro.",
@@ -117,11 +143,19 @@ function couponMailBody(coupon) {
     "Regards,",
     "TTD Autofill Pro",
     "ttdautofillpro@gmail.com",
-  ].join("\n");
+  ];
+
+  return lines.join(newLine);
 }
 
+/* =========================================================
+   REMAINING TIME
+========================================================= */
+
 function remaining(expiresAt) {
-  if (!expiresAt) return "No expiry";
+  if (!expiresAt) {
+    return "No expiry";
+  }
 
   const diff = new Date(expiresAt).getTime() - Date.now();
 
@@ -132,12 +166,15 @@ function remaining(expiresAt) {
   let seconds = Math.floor(diff / 1000);
 
   const days = Math.floor(seconds / 86400);
+
   seconds %= 86400;
 
   const hours = Math.floor(seconds / 3600);
+
   seconds %= 3600;
 
   const minutes = Math.floor(seconds / 60);
+
   seconds %= 60;
 
   if (days > 0) {
@@ -154,6 +191,10 @@ function remaining(expiresAt) {
 
   return `${seconds}s`;
 }
+
+/* =========================================================
+   COUPON STATUS
+========================================================= */
 
 function statusOf(coupon) {
   if (!coupon.active) {
@@ -183,16 +224,25 @@ function statusOf(coupon) {
   };
 }
 
+/* =========================================================
+   TOAST
+========================================================= */
+
 function showToast(message, type = "success") {
   clearTimeout(toastTimer);
 
   toast.textContent = message;
+
   toast.className = `toast ${type} show`;
 
   toastTimer = setTimeout(() => {
     toast.classList.remove("show");
   }, 2600);
 }
+
+/* =========================================================
+   LIVE STATUS
+========================================================= */
 
 function setLive(online) {
   livePill.classList.toggle("offline", !online);
@@ -204,6 +254,10 @@ function setLive(online) {
     : "Retrying";
 }
 
+/* =========================================================
+   RENDER COUPONS
+========================================================= */
+
 function render() {
   const query = ($("search")?.value || "").trim().toLowerCase();
 
@@ -213,7 +267,7 @@ function render() {
     const status = statusOf(coupon).cls;
 
     return (
-      (!query || coupon.code.toLowerCase().includes(query)) &&
+      (!query || String(coupon.code).toLowerCase().includes(query)) &&
       (filter === "all" || status === filter)
     );
   });
@@ -221,15 +275,15 @@ function render() {
   $("totalStat").textContent = allCoupons.length;
 
   $("activeStat").textContent = allCoupons.filter(
-    (c) => statusOf(c).cls === "active"
+    (coupon) => statusOf(coupon).cls === "active"
   ).length;
 
   $("disabledStat").textContent = allCoupons.filter(
-    (c) => statusOf(c).cls === "disabled"
+    (coupon) => statusOf(coupon).cls === "disabled"
   ).length;
 
   $("expiredStat").textContent = allCoupons.filter(
-    (c) => statusOf(c).cls === "expired"
+    (coupon) => statusOf(coupon).cls === "expired"
   ).length;
 
   if (!filtered.length) {
@@ -251,125 +305,126 @@ function render() {
       const usage = `${coupon.usedCount} / ${coupon.maxUses}`;
 
       return `
-      <article class="coupon-row">
+        <article class="coupon-row">
 
-        <div class="coupon-main">
+          <div class="coupon-main">
 
-          <div class="coupon-code">
+            <div class="coupon-code">
 
-            <span class="code-label">
-              COUPON
+              <span class="code-label">
+                COUPON
+              </span>
+
+              <code>
+                ${escapeHtml(coupon.code)}
+              </code>
+
+              <button
+                class="icon-btn"
+                title="Copy coupon"
+                data-copy="${escapeHtml(coupon.code)}"
+              >
+                ⧉
+              </button>
+
+            </div>
+
+            <div class="coupon-meta">
+
+              <span>
+                <b>Usage</b>
+                ${usage}
+              </span>
+
+              <span>
+                <b>Expiry</b>
+                ${formatExpiry(coupon.expiresAt)}
+              </span>
+
+            </div>
+
+          </div>
+
+          <div class="time-block">
+
+            <span>
+              REMAINING
             </span>
 
-            <code>
-              ${escapeHtml(coupon.code)}
-            </code>
+            <strong
+              class="remaining"
+              data-expiry="${coupon.expiresAt || ""}"
+            >
+              ${remaining(coupon.expiresAt)}
+            </strong>
+
+          </div>
+
+          <div class="status-block">
+
+            <span
+              class="badge ${status.cls}"
+            >
+              <i></i>
+              ${status.label}
+            </span>
+
+          </div>
+
+          <div class="row-actions">
+
+            ${
+              coupon.active
+                ? `
+                  <button
+                    class="action-btn disable"
+                    data-toggle="${escapeHtml(coupon.code)}"
+                    data-active="false"
+                  >
+                    Disable
+                  </button>
+                `
+                : `
+                  <button
+                    class="action-btn enable"
+                    data-toggle="${escapeHtml(coupon.code)}"
+                    data-active="true"
+                  >
+                    Enable
+                  </button>
+                `
+            }
 
             <button
-              class="icon-btn"
-              title="Copy coupon"
-              data-copy="${escapeHtml(coupon.code)}"
+              class="action-btn details"
+              data-details="${escapeHtml(coupon.code)}"
             >
-              ⧉
+              ⓘ Details
+            </button>
+
+            <button
+              class="action-btn mail"
+              data-mail="${escapeHtml(coupon.code)}"
+            >
+              ✉ Mail
+            </button>
+
+            <button
+              class="action-btn delete"
+              data-delete="${escapeHtml(coupon.code)}"
+            >
+              Delete
             </button>
 
           </div>
 
-          <div class="coupon-meta">
-
-            <span>
-              <b>Usage</b>
-              ${usage}
-            </span>
-
-            <span>
-              <b>Expiry</b>
-              ${formatExpiry(coupon.expiresAt)}
-            </span>
-
-          </div>
-
-        </div>
-
-        <div class="time-block">
-
-          <span>
-            REMAINING
-          </span>
-
-          <strong
-            class="remaining"
-            data-expiry="${coupon.expiresAt || ""}"
-          >
-            ${remaining(coupon.expiresAt)}
-          </strong>
-
-        </div>
-
-        <div class="status-block">
-
-          <span class="badge ${status.cls}">
-            <i></i>
-            ${status.label}
-          </span>
-
-        </div>
-
-        <div class="row-actions">
-
-          ${
-            coupon.active
-              ? `
-                <button
-                  class="action-btn disable"
-                  data-toggle="${escapeHtml(coupon.code)}"
-                  data-active="false"
-                >
-                  Disable
-                </button>
-              `
-              : `
-                <button
-                  class="action-btn enable"
-                  data-toggle="${escapeHtml(coupon.code)}"
-                  data-active="true"
-                >
-                  Enable
-                </button>
-              `
-          }
-
-          <button
-            class="action-btn details"
-            data-details="${escapeHtml(coupon.code)}"
-          >
-            ⓘ Details
-          </button>
-
-          <button
-            class="action-btn mail"
-            data-mail="${escapeHtml(coupon.code)}"
-          >
-            ✉ Mail
-          </button>
-
-          <button
-            class="action-btn delete"
-            data-delete="${escapeHtml(coupon.code)}"
-          >
-            Delete
-          </button>
-
-        </div>
-
-      </article>
-    `;
+        </article>
+      `;
     })
     .join("");
 
-  /*
-   * Copy coupon
-   */
+  /* COPY */
+
   table.querySelectorAll("[data-copy]").forEach((button) => {
     button.onclick = async () => {
       try {
@@ -388,9 +443,8 @@ function render() {
     };
   });
 
-  /*
-   * Enable / Disable
-   */
+  /* ENABLE / DISABLE */
+
   table.querySelectorAll("[data-toggle]").forEach((button) => {
     button.onclick = async () => {
       const code = button.dataset.toggle;
@@ -420,33 +474,34 @@ function render() {
     };
   });
 
-  /*
-   * Details
-   */
+  /* DETAILS */
+
   table.querySelectorAll("[data-details]").forEach((button) => {
     button.onclick = () => {
       openDetails(button.dataset.details);
     };
   });
 
-  /*
-   * Mail
-   */
+  /* MAIL */
+
   table.querySelectorAll("[data-mail]").forEach((button) => {
     button.onclick = () => {
       openMail(button.dataset.mail);
     };
   });
 
-  /*
-   * Delete
-   */
+  /* DELETE */
+
   table.querySelectorAll("[data-delete]").forEach((button) => {
     button.onclick = () => {
       openConfirm(button.dataset.delete);
     };
   });
 }
+
+/* =========================================================
+   LOAD COUPONS
+========================================================= */
 
 async function load(silent = false) {
   if (!silent) {
@@ -501,13 +556,19 @@ async function load(silent = false) {
   }
 }
 
+/* =========================================================
+   REALTIME
+========================================================= */
+
 function startRealtime() {
   clearInterval(loadTimer);
 
-  loadTimer = setInterval(() => {
-    load(true);
-  }, 1500);
+  loadTimer = setInterval(() => load(true), 1500);
 }
+
+/* =========================================================
+   LOGIN / PANEL
+========================================================= */
 
 function showLogin() {
   login.classList.remove("hidden");
@@ -518,9 +579,7 @@ function showLogin() {
 
   setLive(true);
 
-  setTimeout(() => {
-    tokenEl.focus();
-  }, 50);
+  setTimeout(() => tokenEl.focus(), 50);
 }
 
 function showPanel() {
@@ -533,19 +592,26 @@ function showPanel() {
   startRealtime();
 }
 
+/* =========================================================
+   FIND COUPON
+========================================================= */
+
 function findCoupon(code) {
   return allCoupons.find(
     (coupon) => String(coupon.code).toUpperCase() === String(code).toUpperCase()
   );
 }
 
-/*
- * Coupon details modal
- */
+/* =========================================================
+   DETAILS MODAL
+========================================================= */
+
 function openDetails(code) {
   const coupon = findCoupon(code);
 
-  if (!coupon) return;
+  if (!coupon) {
+    return;
+  }
 
   const status = statusOf(coupon);
 
@@ -606,13 +672,16 @@ function closeDetails() {
   detailsModal.setAttribute("aria-hidden", "true");
 }
 
-/*
- * Mail modal
- */
+/* =========================================================
+   MAIL MODAL
+========================================================= */
+
 function openMail(code) {
   const coupon = findCoupon(code);
 
-  if (!coupon) return;
+  if (!coupon) {
+    return;
+  }
 
   mailTo.value = "";
 
@@ -626,9 +695,7 @@ function openMail(code) {
 
   mailModal.setAttribute("aria-hidden", "false");
 
-  setTimeout(() => {
-    mailTo.focus();
-  }, 50);
+  setTimeout(() => mailTo.focus(), 50);
 }
 
 function closeMail() {
@@ -637,9 +704,10 @@ function closeMail() {
   mailModal.setAttribute("aria-hidden", "true");
 }
 
-/*
- * Delete confirmation
- */
+/* =========================================================
+   DELETE CONFIRMATION
+========================================================= */
+
 function openConfirm(code) {
   pendingConfirm = code;
 
@@ -647,7 +715,9 @@ function openConfirm(code) {
 
   $("modalText").innerHTML = `
     You are about to permanently delete
-    <strong>${escapeHtml(code)}</strong>.
+    <strong>
+      ${escapeHtml(code)}
+    </strong>.
 
     Any license issued from this coupon
     will be revoked immediately.
@@ -656,6 +726,8 @@ function openConfirm(code) {
   `;
 
   $("confirmModalBtn").disabled = false;
+
+  $("confirmModalBtn").textContent = "Delete permanently";
 
   $("confirmModal").classList.remove("hidden");
 
@@ -670,9 +742,10 @@ function closeConfirm() {
   $("confirmModal").setAttribute("aria-hidden", "true");
 }
 
-/*
- * Login
- */
+/* =========================================================
+   LOGIN
+========================================================= */
+
 $("loginBtn").onclick = async () => {
   token = tokenEl.value.trim();
 
@@ -709,9 +782,10 @@ tokenEl.addEventListener("keydown", (event) => {
   }
 });
 
-/*
- * Logout
- */
+/* =========================================================
+   LOGOUT
+========================================================= */
+
 $("logout").onclick = () => {
   sessionStorage.removeItem("ttd_admin_token");
 
@@ -720,16 +794,18 @@ $("logout").onclick = () => {
   showLogin();
 };
 
-/*
- * Refresh
- */
+/* =========================================================
+   REFRESH
+========================================================= */
+
 $("refresh").onclick = () => {
   load();
 };
 
-/*
- * Generate coupons
- */
+/* =========================================================
+   GENERATE COUPONS
+========================================================= */
+
 $("generate").onclick = async () => {
   msg.textContent = "Generating…";
 
@@ -759,37 +835,41 @@ $("generate").onclick = async () => {
     newCodes.innerHTML = data.coupons
       .map(
         (coupon) => `
-          <div class="new-code">
+              <div class="new-code">
 
-            <div>
-              <span>NEW</span>
+                <div>
+                  <span>NEW</span>
 
-              <code>
-                ${escapeHtml(coupon.code)}
-              </code>
-            </div>
+                  <code>
+                    ${escapeHtml(coupon.code)}
+                  </code>
+                </div>
 
-            <button
-              class="icon-btn"
-              data-copy-new="${escapeHtml(coupon.code)}"
-            >
-              ⧉ Copy
-            </button>
+                <button
+                  class="icon-btn"
+                  data-copy-new="${escapeHtml(coupon.code)}"
+                >
+                  ⧉ Copy
+                </button>
 
-          </div>
-        `
+              </div>
+            `
       )
       .join("");
 
     newCodes.querySelectorAll("[data-copy-new]").forEach((button) => {
       button.onclick = async () => {
-        await navigator.clipboard.writeText(button.dataset.copyNew);
+        try {
+          await navigator.clipboard.writeText(button.dataset.copyNew);
 
-        button.textContent = "✓ Copied";
+          button.textContent = "✓ Copied";
 
-        setTimeout(() => {
-          button.textContent = "⧉ Copy";
-        }, 1000);
+          setTimeout(() => {
+            button.textContent = "⧉ Copy";
+          }, 1000);
+        } catch {
+          showToast("Could not copy coupon", "error");
+        }
       };
     });
 
@@ -805,9 +885,10 @@ $("generate").onclick = async () => {
   }
 };
 
-/*
- * Quick expiry buttons
- */
+/* =========================================================
+   QUICK EXPIRY
+========================================================= */
+
 document.querySelectorAll("[data-expiry]").forEach((button) => {
   button.onclick = () => {
     const days = button.dataset.expiry;
@@ -820,7 +901,7 @@ document.querySelectorAll("[data-expiry]").forEach((button) => {
 
     const date = new Date(Date.now() + Number(days) * 86400000);
 
-    const pad = (n) => String(n).padStart(2, "0");
+    const pad = (number) => String(number).padStart(2, "0");
 
     const local = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
       date.getDate()
@@ -830,9 +911,10 @@ document.querySelectorAll("[data-expiry]").forEach((button) => {
   };
 });
 
-/*
- * Search / filter
- */
+/* =========================================================
+   SEARCH / FILTER
+========================================================= */
+
 $("search").addEventListener("input", render);
 
 $("statusFilter").addEventListener("change", render);
@@ -841,9 +923,10 @@ $("refresh").addEventListener("click", () => {
   showToast("Dashboard refreshed");
 });
 
-/*
- * Delete modal
- */
+/* =========================================================
+   DELETE MODAL
+========================================================= */
+
 $("cancelModal").onclick = closeConfirm;
 
 $("confirmModal").querySelector("[data-close-modal]").onclick = closeConfirm;
@@ -889,33 +972,26 @@ $("confirmModalBtn").onclick = async () => {
   }
 };
 
-/*
- * Details modal
- */
+/* =========================================================
+   DETAILS MODAL
+========================================================= */
+
 $("closeDetails").onclick = closeDetails;
 
 detailsModal.querySelector("[data-close-details]").onclick = closeDetails;
 
-/*
- * Mail modal
- */
+/* =========================================================
+   MAIL MODAL
+========================================================= */
+
 $("cancelMail").onclick = closeMail;
 
 mailModal.querySelector("[data-close-mail]").onclick = closeMail;
 
-/*
- * OPEN GMAIL
- *
- * This does NOT use mailto:
- *
- *     mailto:...
- *
- * because mailto depends on a desktop
- * mail application being configured.
- *
- * Instead, this opens Gmail directly
- * in the browser.
- */
+/* =========================================================
+   OPEN GMAIL
+========================================================= */
+
 $("sendMail").onclick = () => {
   const email = mailTo.value.trim();
 
@@ -923,10 +999,9 @@ $("sendMail").onclick = () => {
    * Correct email validation.
    *
    * IMPORTANT:
-   * \s means whitespace.
-   *
-   * Do not write \\s here.
+   * Use \s, not \\s.
    */
+
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     mailMsg.textContent = "Enter a valid email address.";
 
@@ -947,29 +1022,41 @@ $("sendMail").onclick = () => {
 
   const subject = `TTD Autofill Pro Coupon - ${coupon.code}`;
 
+  /*
+   * Build the email body using REAL
+   * CRLF line breaks.
+   */
+
   const body = couponMailBody(coupon);
 
   /*
-   * Gmail web compose URL.
+   * Gmail web composer.
    *
-   * This works on laptops even when
-   * Windows has no default mail application.
+   * This works on laptop/desktop even
+   * when Windows has no default mail
+   * application configured.
    */
+
   const gmailComposeUrl =
-    `https://mail.google.com/mail/?view=cm&fs=1` +
-    `&to=${encodeURIComponent(email)}` +
-    `&su=${encodeURIComponent(subject)}` +
-    `&body=${encodeURIComponent(body)}`;
+    "https://mail.google.com/mail/?view=cm&fs=1" +
+    "&to=" +
+    encodeURIComponent(email) +
+    "&su=" +
+    encodeURIComponent(subject) +
+    "&body=" +
+    encodeURIComponent(body);
 
   /*
-   * Open Gmail in a new browser tab.
+   * Open Gmail in a new tab.
    */
+
   const popup = window.open(gmailComposeUrl, "_blank", "noopener,noreferrer");
 
   /*
-   * If the browser blocks the popup,
-   * navigate the current tab instead.
+   * If popup is blocked, open it
+   * in the current tab.
    */
+
   if (!popup) {
     window.location.href = gmailComposeUrl;
   }
@@ -977,9 +1064,10 @@ $("sendMail").onclick = () => {
   closeMail();
 };
 
-/*
- * Escape closes any open modal.
- */
+/* =========================================================
+   ESCAPE KEY
+========================================================= */
+
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
     closeConfirm();
@@ -990,9 +1078,10 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-/*
- * Update remaining time every second.
- */
+/* =========================================================
+   UPDATE REMAINING TIME
+========================================================= */
+
 setInterval(() => {
   document.querySelectorAll(".remaining").forEach((element) => {
     element.textContent = remaining(element.dataset.expiry);
@@ -1001,9 +1090,10 @@ setInterval(() => {
   render();
 }, 1000);
 
-/*
- * Start application.
- */
+/* =========================================================
+   START
+========================================================= */
+
 if (token) {
   showPanel();
 } else {
